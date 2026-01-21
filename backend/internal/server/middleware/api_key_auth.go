@@ -19,6 +19,7 @@ func NewAPIKeyAuthMiddleware(apiKeyService *service.APIKeyService, subscriptionS
 // apiKeyAuthWithSubscription API Key认证中间件（支持订阅验证）
 func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscriptionService *service.SubscriptionService, cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		usageEndpoint := isUsageEndpoint(c)
 		queryKey := strings.TrimSpace(c.Query("key"))
 		queryApiKey := strings.TrimSpace(c.Query("api_key"))
 		if queryKey != "" || queryApiKey != "" {
@@ -126,17 +127,19 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 				log.Printf("Failed to reset subscription windows: %v", err)
 			}
 
-			// 预检查用量限制（使用0作为额外费用进行预检查）
-			if err := subscriptionService.CheckUsageLimits(c.Request.Context(), subscription, apiKey.Group, 0); err != nil {
-				AbortWithError(c, 429, "USAGE_LIMIT_EXCEEDED", err.Error())
-				return
+			if !usageEndpoint {
+				// 预检查用量限制（使用0作为额外费用进行预检查）
+				if err := subscriptionService.CheckUsageLimits(c.Request.Context(), subscription, apiKey.Group, 0); err != nil {
+					AbortWithError(c, 429, "USAGE_LIMIT_EXCEEDED", err.Error())
+					return
+				}
 			}
 
 			// 将订阅信息存入上下文
 			c.Set(string(ContextKeySubscription), subscription)
 		} else {
 			// 余额模式：检查用户余额
-			if apiKey.User.Balance <= 0 {
+			if !usageEndpoint && apiKey.User.Balance <= 0 {
 				AbortWithError(c, 403, "INSUFFICIENT_BALANCE", "Insufficient account balance")
 				return
 			}
@@ -151,6 +154,15 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 		c.Set(string(ContextKeyUserRole), apiKey.User.Role)
 
 		c.Next()
+	}
+}
+
+func isUsageEndpoint(c *gin.Context) bool {
+	switch c.Request.URL.Path {
+	case "/v1/usage", "/antigravity/v1/usage":
+		return true
+	default:
+		return false
 	}
 }
 
