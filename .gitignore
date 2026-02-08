@@ -109,6 +109,7 @@ backend/data/
 # ===================
 backend/config.yaml
 deploy/config.yaml
+deploy/env
 backend/.installed
 
 # ===================
