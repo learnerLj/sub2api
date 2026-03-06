@@ -44,6 +44,7 @@ chmod +x docker-deploy.sh
 ```
 
 **What the script does:**
+
 - Downloads `docker-compose.local.yml` and `.env.example`
 - Automatically generates secure secrets (JWT_SECRET, TOTP_ENCRYPTION_KEY, POSTGRES_PASSWORD)
 - Creates `.env` file with generated secrets
@@ -51,6 +52,7 @@ chmod +x docker-deploy.sh
 - **Displays generated credentials** (POSTGRES_PASSWORD, JWT_SECRET, etc.)
 
 **After running the script:**
+
 ```bash
 # Start services
 docker-compose -f docker-compose.local.yml up -d
@@ -120,6 +122,7 @@ When using Docker Compose with `AUTO_SETUP=true`:
 2. No manual Setup Wizard needed - just configure `.env` and start
 
 3. If `ADMIN_PASSWORD` is not set, check logs for the generated password:
+
    ```bash
    docker-compose logs sub2api | grep "admin password"
    ```
@@ -265,10 +268,12 @@ Sub2API supports three methods to connect to Gemini:
 > Code Assist OAuth will still use the built-in Gemini CLI client.
 
 **Requirements:**
+
 - Google account with access to Google Cloud Platform
 - A GCP project (auto-detected or manually specified)
 
 **How to get Project ID (if auto-detection fails):**
+
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Click the project dropdown at the top of the page
 3. Copy the Project ID (not the project name) from the list
@@ -362,11 +367,13 @@ curl -sSL https://raw.githubusercontent.com/Wei-Shaw/sub2api/main/deploy/install
 2. Extract and copy the binary to `/opt/sub2api/`
 3. Copy `sub2api.service` to `/etc/systemd/system/`
 4. Run:
+
    ```bash
    sudo systemctl daemon-reload
    sudo systemctl enable sub2api
    sudo systemctl start sub2api
    ```
+
 5. Open the Setup Wizard in your browser to complete configuration
 
 ### Commands
@@ -413,11 +420,13 @@ During installation, you will be prompted to configure the server listen address
 To change after installation:
 
 1. Edit the systemd service:
+
    ```bash
    sudo systemctl edit sub2api
    ```
 
 2. Add or modify:
+
    ```ini
    [Service]
    Environment=SERVER_HOST=0.0.0.0
@@ -425,6 +434,7 @@ To change after installation:
    ```
 
 3. Reload and restart:
+
    ```bash
    sudo systemctl daemon-reload
    sudo systemctl restart sub2api
@@ -435,22 +445,26 @@ To change after installation:
 If you need to use AI Studio OAuth for Gemini accounts, add the OAuth client credentials to the systemd service file:
 
 1. Edit the service file:
+
    ```bash
    sudo nano /etc/systemd/system/sub2api.service
    ```
 
 2. Add your OAuth credentials in the `[Service]` section (after the existing `Environment=` lines):
+
    ```ini
    Environment=GEMINI_OAUTH_CLIENT_ID=your-client-id.apps.googleusercontent.com
    Environment=GEMINI_OAUTH_CLIENT_SECRET=GOCSPX-your-client-secret
    ```
 
    如需使用“内置 Gemini CLI OAuth Client”（Code Assist / Google One），还需要注入：
+
    ```ini
    Environment=GEMINI_CLI_OAUTH_CLIENT_SECRET=GOCSPX-your-built-in-secret
    ```
 
 3. Reload and restart:
+
    ```bash
    sudo systemctl daemon-reload
    sudo systemctl restart sub2api

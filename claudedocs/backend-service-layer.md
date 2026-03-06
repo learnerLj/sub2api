@@ -87,25 +87,31 @@ Handler (HTTP/Gin) → Service (业务逻辑) → Repository (数据访问)
 从 `internal/domain` 包重新导出所有领域常量，集中管理以便 service 层直接引用。
 
 **平台常量:**
+
 - `PlatformAnthropic`, `PlatformOpenAI`, `PlatformGemini`, `PlatformAntigravity`
 
 **账号类型:**
+
 - `AccountTypeOAuth` — OAuth 授权账号
 - `AccountTypeSetupToken` — Setup Token 账号 (仅 Anthropic)
 - `AccountTypeAPIKey` — API Key 账号
 - `AccountTypeUpstream` — 上游转发账号 (仅 OpenAI)
 
 **状态常量:**
+
 - `StatusActive`, `StatusDisabled`, `StatusError`, `StatusUnused`, `StatusUsed`, `StatusExpired`
 
 **角色常量:**
+
 - `RoleAdmin`, `RoleUser`
 
 **订阅类型:**
+
 - `SubscriptionTypeStandard` — 标准分组
 - `SubscriptionTypeSubscription` — 订阅分组
 
 **设置键 (40+ 个):**
+
 - 注册、SMTP、Turnstile、TOTP、LinuxDo Connect、OEM、Ops 监控等
 
 ### 3.2 `settings_view.go`
@@ -119,6 +125,7 @@ Handler (HTTP/Gin) → Service (业务逻辑) → Repository (数据访问)
 | `StreamTimeoutSettings` | 流式超时处理配置 | 5 |
 
 **流超时处理方式:**
+
 - `StreamTimeoutActionTempUnsched` — 临时不可调度
 - `StreamTimeoutActionError` — 标记为错误状态
 - `StreamTimeoutActionNone` — 不处理
@@ -134,13 +141,16 @@ Handler (HTTP/Gin) → Service (业务逻辑) → Repository (数据访问)
 **核心职责:** 处理 Anthropic (Claude) API 请求的完整代理流程。
 
 **关键结构体:**
+
 - `GatewayService` — Anthropic 网关主服务
 - `accountWithLoad` — 带负载信息的账号，用于感知负载的调度
 
 **核心流程:**
+
 1. 解析请求 → 2. 认证/授权 → 3. 账号调度 → 4. 请求转发 → 5. 响应处理 → 6. 计费记录
 
 **特性:**
+
 - Sticky Session 支持 (基于 digest chain)
 - Claude Code CLI 请求验证
 - 模型映射与路由
@@ -151,6 +161,7 @@ Handler (HTTP/Gin) → Service (业务逻辑) → Repository (数据访问)
 **核心职责:** 处理 OpenAI API 请求 (包含 Chat Completions 和 Responses API)。
 
 **关键特性:**
+
 - 工具调用修正 (`openai_tool_corrector.go`)
 - 工具调用续传 (`openai_tool_continuation.go`)
 - Codex 格式转换 (`openai_codex_transform.go`)
@@ -160,6 +171,7 @@ Handler (HTTP/Gin) → Service (业务逻辑) → Repository (数据访问)
 **核心职责:** 处理 Antigravity 平台请求。
 
 **特性:**
+
 - Google RPC 状态码处理
 - 配额管理与查询 (`antigravity_quota_fetcher.go`, `antigravity_quota_scope.go`)
 - 混合调度支持 (可同时参与 Anthropic/Gemini 调度)
@@ -169,6 +181,7 @@ Handler (HTTP/Gin) → Service (业务逻辑) → Repository (数据访问)
 **核心职责:** 将 Anthropic Messages API 格式转换为 Gemini API 格式。
 
 **特性:**
+
 - 最大重试次数: `geminiMaxRetries = 5`
 - Gemini Code Assist 支持 (`geminicli_codeassist.go`)
 
@@ -197,6 +210,7 @@ Handler (HTTP/Gin) → Service (业务逻辑) → Repository (数据访问)
 **核心职责:** 用户认证 (注册/登录/JWT)
 
 **结构体:**
+
 ```go
 type AuthService struct {
     userRepo       UserRepository
@@ -209,6 +223,7 @@ type AuthService struct {
 ```
 
 **核心方法:**
+
 | 方法 | 说明 |
 |------|------|
 | `Register` | 用户注册 (支持邮箱验证、邀请码) |
@@ -218,6 +233,7 @@ type AuthService struct {
 | `ResetPassword` | 密码重置 |
 
 **安全机制:**
+
 - JWT Token 包含 `TokenVersion`，密码修改后自动失效旧 Token
 - LinuxDo Connect OAuth 第三方登录支持
 - 邮箱验证码 (constant-time 比较防止时序攻击)
@@ -231,6 +247,7 @@ type AuthService struct {
 **核心职责:** Anthropic Claude OAuth 2.0 认证流程
 
 **接口:**
+
 ```go
 type ClaudeOAuthClient interface {
     ExchangeCode(ctx, code, codeVerifier, redirectURI string) (*ClaudeTokenInfo, error)
@@ -240,6 +257,7 @@ type ClaudeOAuthClient interface {
 ```
 
 **特性:**
+
 - PKCE (Proof Key for Code Exchange) 支持
 - 完整授权范围 vs 仅推理 (inference only) 两种 scope
 - 代理转发支持
@@ -249,6 +267,7 @@ type ClaudeOAuthClient interface {
 **核心职责:** OpenAI OAuth 2.0 认证流程
 
 **接口:**
+
 ```go
 type OpenAIOAuthClient interface {
     ExchangeCode(ctx, code, codeVerifier, redirectURI string) (*OpenAITokenInfo, error)
@@ -262,6 +281,7 @@ type OpenAIOAuthClient interface {
 **核心职责:** Google Gemini OAuth 认证与 Tier 检测
 
 **Tier 类型:**
+
 | Tier ID | 说明 | 配额类型 |
 |---------|------|---------|
 | `google_one_free` | Google One 免费版 | 共享池 |
@@ -292,6 +312,7 @@ type OpenAIOAuthClient interface {
 **核心职责:** 后台定时刷新所有平台的 OAuth 令牌
 
 **结构体:**
+
 ```go
 type TokenRefreshService struct {
     accountRepo    AccountRepository
@@ -302,6 +323,7 @@ type TokenRefreshService struct {
 ```
 
 **Refresher 模式:**
+
 ```go
 type TokenRefresher interface {
     RefreshAccountToken(ctx, account *Account) (*TokenInfo, error)
@@ -309,6 +331,7 @@ type TokenRefresher interface {
 ```
 
 **支持的 Refresher:**
+
 - `token_refresher.go` — 通用 refresher 接口
 - `claude_token_provider.go` — Claude refresher
 - `antigravity_token_refresher.go` — Antigravity refresher
@@ -332,6 +355,7 @@ type CompositeTokenCacheInvalidator struct {
 ```
 
 **Token Version 检测:**
+
 - `CheckTokenVersion` 通过 `_token_version` 凭据字段检测过期令牌
 
 ### 6.8 `gemini_token_cache.go` — Gemini 令牌缓存
@@ -345,6 +369,7 @@ type CompositeTokenCacheInvalidator struct {
 ### 7.1 `account.go` — 账号领域模型
 
 **核心结构体 (30+ 字段):**
+
 ```go
 type Account struct {
     ID           int64
@@ -364,6 +389,7 @@ type Account struct {
 ```
 
 **核心方法:**
+
 | 方法 | 说明 |
 |------|------|
 | `GetCredential(key)` | 安全获取凭据值 |
@@ -375,12 +401,14 @@ type Account struct {
 | `GeminiTierID()` | 获取 Gemini Tier ID |
 
 **模型映射规则:**
+
 - 精确匹配 → 通配符匹配 (`*` → 目标模型)
 - 支持多目标映射 (负载均衡)
 
 ### 7.2 `account_service.go` — 账号服务
 
 **仓库接口 (20+ 方法):**
+
 ```go
 type AccountRepository interface {
     Create, GetByID, Update, Delete
@@ -396,6 +424,7 @@ type AccountRepository interface {
 ```
 
 **服务方法:**
+
 | 方法 | 说明 |
 |------|------|
 | `Create/Update/Delete` | CRUD 操作 |
@@ -426,6 +455,7 @@ type AccountGroup struct {
 **存储位置:** `Account.Extra["model_rate_limits"]`
 
 **核心方法:**
+
 | 方法 | 说明 |
 |------|------|
 | `isModelRateLimitedWithContext` | 检查模型是否被限流 (支持 Antigravity thinking 后缀) |
@@ -459,6 +489,7 @@ type User struct {
 ```
 
 **核心方法:**
+
 - `IsAdmin()` — 是否管理员
 - `CanBindGroup(groupID, isExclusive)` — 是否可绑定分组
 - `SetPassword/CheckPassword` — 密码管理 (bcrypt)
@@ -480,6 +511,7 @@ type UserRepository interface {
 ```
 
 **服务方法:**
+
 | 方法 | 说明 |
 |------|------|
 | `GetProfile` | 获取用户资料 |
@@ -498,6 +530,7 @@ type UserRepository interface {
 **核心职责:** 用户 API Key 的完整生命周期管理
 
 **仓库接口:**
+
 ```go
 type APIKeyRepository interface {
     Create, GetByID, Update, Delete
@@ -511,6 +544,7 @@ type APIKeyRepository interface {
 ```
 
 **缓存接口:**
+
 ```go
 type APIKeyCache interface {
     GetAuthCache, SetAuthCache       // Redis L2 缓存
@@ -520,6 +554,7 @@ type APIKeyCache interface {
 ```
 
 **性能优化:**
+
 - **L1 缓存**: 使用 `ristretto` 本地内存缓存
 - **L2 缓存**: Redis 缓存
 - **Singleflight**: `golang.org/x/sync/singleflight` 避免并发查询重复
@@ -583,6 +618,7 @@ type Group struct {
 ```
 
 **核心方法:**
+
 - `IsSubscriptionType()` — 是否订阅类型
 - `HasDailyLimit/HasWeeklyLimit/HasMonthlyLimit` — 是否有使用限额
 - `GetRateMultiplier(userGroupRates)` — 获取倍率
@@ -599,6 +635,7 @@ type GroupRepository interface {
 ```
 
 **服务方法:**
+
 | 方法 | 说明 |
 |------|------|
 | `Create/Update/Delete` | CRUD (变更后失效认证缓存) |
@@ -614,6 +651,7 @@ type GroupRepository interface {
 **核心职责:** 基于 LiteLLM 格式的动态模型定价
 
 **核心结构体:**
+
 ```go
 type PricingService struct {
     prices        map[string]*ModelPricing
@@ -623,6 +661,7 @@ type PricingService struct {
 ```
 
 **模型匹配优先级 (5 级):**
+
 1. 精确匹配 (如 `claude-sonnet-4-20250514`)
 2. 变体匹配 (日期后缀去除)
 3. 模糊匹配 (前缀匹配)
@@ -630,6 +669,7 @@ type PricingService struct {
 5. OpenAI 回退 (添加 `openai/` 前缀)
 
 **远程同步:**
+
 - 基于 hash 的增量更新，仅在定价数据变化时更新
 - `PricingRemoteClient` 接口用于获取远程定价数据
 
@@ -638,6 +678,7 @@ type PricingService struct {
 **核心职责:** 计算请求成本
 
 **核心结构体:**
+
 ```go
 type UsageTokens struct {
     InputTokens, OutputTokens   int64
@@ -656,9 +697,11 @@ type CostBreakdown struct {
 ```
 
 **计费流程:**
+
 1. 查找模型定价 → 2. 计算各项成本 → 3. 应用倍率 → 4. 计算实际扣费
 
 **Gemini 200K 长上下文双倍计费:**
+
 - `CalculateCostWithLongContext` — 超过 200K token 的请求双倍收费
 
 ### 11.3 `billing_cache_service.go` — 计费缓存服务
@@ -666,6 +709,7 @@ type CostBreakdown struct {
 **核心职责:** 高性能异步计费资格检查
 
 **关键组件:**
+
 - **异步 Worker Pool**: 10 个 worker，1000 缓冲区
 - **熔断器**: `billingCircuitBreaker` (Closed → Open → HalfOpen)
 - **缓存策略**: Redis 缓存 + 内存缓存
@@ -704,6 +748,7 @@ type UserSubscription struct {
 ```
 
 **核心方法:**
+
 - `IsActive()`, `IsExpired()`, `DaysRemaining()`
 - `NeedsDailyReset()`, `NeedsWeeklyReset()`, `NeedsMonthlyReset()`
 - `CheckDailyLimit()`, `CheckWeeklyLimit()`, `CheckMonthlyLimit()`
@@ -712,6 +757,7 @@ type UserSubscription struct {
 ### 12.2 `subscription_service.go` — 订阅服务
 
 **核心方法:**
+
 | 方法 | 说明 |
 |------|------|
 | `AssignSubscription` | 分配订阅 (不允许重复) |
@@ -726,6 +772,7 @@ type UserSubscription struct {
 | `GetSubscriptionProgress` | 获取订阅使用进度 |
 
 **订阅进度模型:**
+
 ```go
 type SubscriptionProgress struct {
     Daily   *UsageWindowProgress
@@ -747,16 +794,19 @@ type SubscriptionProgress struct {
 **核心职责:** 基于 Outbox 模式维护调度器的 Redis 缓存快照
 
 **架构:**
+
 ```
 DB (Outbox 事件) → SnapshotService → Redis Cache → Scheduler
 ```
 
 **三个后台 Worker:**
+
 1. **Initial Rebuild** — 启动时重建缓存
 2. **Outbox Poller** — 轮询 outbox 事件并增量更新
 3. **Full Rebuild** — 定期全量重建
 
 **核心方法:**
+
 ```go
 func (s *SchedulerSnapshotService) ListSchedulableAccounts(
     ctx context.Context, groupID *int64, platform string, hasForcePlatform bool,
@@ -764,10 +814,12 @@ func (s *SchedulerSnapshotService) ListSchedulableAccounts(
 ```
 
 **混合调度模式:**
+
 - `PlatformAnthropic` 和 `PlatformGemini` 请求可以使用 `PlatformAntigravity` 账号
 - 通过 `SchedulerModeMixed` 实现
 
 **Outbox 事件类型:**
+
 | 事件 | 说明 |
 |------|------|
 | `AccountChanged` | 账号变更 |
@@ -778,6 +830,7 @@ func (s *SchedulerSnapshotService) ListSchedulableAccounts(
 | `FullRebuild` | 触发全量重建 |
 
 **容灾机制:**
+
 - DB Fallback: 缓存未命中时回退到数据库查询
 - `fallbackLimiter`: 基于 QPS 的限流器，防止 DB 过载
 - Outbox Lag 检测: 延迟过大时自动触发全量重建
@@ -805,6 +858,7 @@ type SchedulerCache interface {
 ```
 
 **Bucket 模式:**
+
 - `SchedulerModeSingle` — 单平台调度
 - `SchedulerModeMixed` — 混合调度 (含 Antigravity)
 - `SchedulerModeForced` — 强制平台调度
@@ -830,6 +884,7 @@ type ConcurrencyCache interface {
 ```
 
 **核心概念:**
+
 - **AcquireResult**: 包含 `ReleaseFunc`，调用后自动释放槽位
 - **Extra Wait Slots**: `defaultExtraWaitSlots = 20`，允许额外等待槽位
 - **槽位清理 Worker**: 定期清理过期槽位
@@ -869,6 +924,7 @@ type RateLimitService struct {
 ```
 
 **错误策略结果:**
+
 ```go
 type ErrorPolicyResult int
 const (
@@ -880,6 +936,7 @@ const (
 ```
 
 **核心方法:**
+
 | 方法 | 说明 |
 |------|------|
 | `CheckErrorPolicy` | 检查上游错误是否匹配速率限制策略 |
@@ -890,6 +947,7 @@ const (
 **核心职责:** Gemini 平台的分层配额管理
 
 **默认配额策略:**
+
 | Tier | Pro RPD/RPM | Flash RPD/RPM | 冷却时间 |
 |------|-------------|---------------|---------|
 | aistudio_free | 50/2 | 1500/15 | 30 min |
@@ -899,6 +957,7 @@ const (
 | gcp_standard | 共享 1500/120 | | 5 min |
 
 **配额覆盖:**
+
 - V1 格式: 简单 tier 覆盖
 - V2 格式: `quota_rules` 支持更细粒度的模型级配额
 
@@ -933,6 +992,7 @@ type CreateUsageLogRequest struct {
 ```
 
 **事务性创建:**
+
 - 使用 ent Client 事务 (tx)
 - 创建使用记录的同时扣减余额
 
@@ -966,11 +1026,13 @@ type DashboardService struct {
 ```
 
 **缓存策略:**
+
 - **Fresh TTL**: 15s 内认为数据新鲜
 - **Cache TTL**: 30s 内可用 (非新鲜时异步刷新)
 - **异步刷新**: 使用 `atomic.CompareAndSwapInt32` 保证只有一个 goroutine 刷新
 
 **核心方法:**
+
 | 方法 | 说明 |
 |------|------|
 | `GetDashboardStats` | 获取仪表盘统计 |
@@ -1005,6 +1067,7 @@ type OpsService struct {
 ```
 
 **核心常量:**
+
 - `opsMaxStoredRequestBodyBytes = 10KB`
 - `opsMaxStoredErrorBodyBytes = 20KB`
 
@@ -1056,6 +1119,7 @@ type SettingRepository interface {
 ```
 
 **核心方法:**
+
 | 方法 | 说明 |
 |------|------|
 | `GetPublicSettings` | 获取公开设置 (~20 个键) |
@@ -1085,6 +1149,7 @@ type EmailCache interface {
 ```
 
 **常量:**
+
 - 验证码 TTL: 15 分钟
 - 验证码冷却: 1 分钟
 - 最大尝试次数: 5
@@ -1092,6 +1157,7 @@ type EmailCache interface {
 - 密码重置邮件冷却: 30 秒
 
 **安全特性:**
+
 - Constant-time 比较防止时序攻击
 - TLS 1.2+ 强制要求
 - 邮件轰炸防护 (cooldown)
@@ -1115,12 +1181,14 @@ type AnnouncementTargeting = domain.AnnouncementTargeting
 **公告状态:** `Draft`, `Active`, `Archived`
 
 **定向条件类型:**
+
 - `Subscription` — 按订阅分组
 - `Balance` — 按余额条件 (GT/GTE/LT/LTE/EQ)
 
 ### 20.2 `announcement_service.go` — 公告服务
 
 **核心方法:**
+
 | 方法 | 说明 |
 |------|------|
 | `Create/Update/Delete` | CRUD |
@@ -1129,6 +1197,7 @@ type AnnouncementTargeting = domain.AnnouncementTargeting
 | `ListUserReadStatus` | 查看公告阅读状态 |
 
 **可见性规则:**
+
 1. 公告必须是 Active 状态
 2. 当前时间在 StartsAt ~ EndsAt 范围内
 3. 用户匹配定向条件 (余额/订阅)
@@ -1203,6 +1272,7 @@ type UpdateService struct {
 ```
 
 **核心方法:**
+
 | 方法 | 说明 |
 |------|------|
 | `CheckUpdate` | 检查更新 (支持缓存, TTL 20min) |
@@ -1210,6 +1280,7 @@ type UpdateService struct {
 | `Rollback` | 回滚到上一版本 |
 
 **安全特性:**
+
 - URL 白名单验证 (仅允许 `github.com` 和 `objects.githubusercontent.com`)
 - SHA256 校验和验证
 - Zip Slip / Path Traversal 防护
@@ -1226,6 +1297,7 @@ type UpdateService struct {
 **核心职责:** 从 CRS (Claude Resource Scheduler) 系统同步账号
 
 **支持的账号类型同步:**
+
 | CRS 类型 | sub2api 平台 | sub2api 类型 |
 |----------|-------------|-------------|
 | Claude OAuth/SetupToken | anthropic | oauth/setup_token |
@@ -1236,6 +1308,7 @@ type UpdateService struct {
 | Gemini API Key | gemini | apikey |
 
 **同步流程:**
+
 1. CRS 登录获取 adminToken
 2. 导出所有账号
 3. 逐个同步 (创建/更新/跳过)
@@ -1243,6 +1316,7 @@ type UpdateService struct {
 5. 可选同步代理
 
 **URL 安全:**
+
 - 支持 URL 白名单
 - SSRF 防护 (IP 验证)
 
@@ -1265,6 +1339,7 @@ type UserAttributeDefinition struct {
 ```
 
 **验证规则:**
+
 ```go
 type UserAttributeValidation struct {
     MinLength, MaxLength *int
@@ -1277,6 +1352,7 @@ type UserAttributeValidation struct {
 ### 25.2 `user_attribute_service.go` — 属性服务
 
 **核心方法:**
+
 | 方法 | 说明 |
 |------|------|
 | `CreateDefinition` | 创建属性定义 |
@@ -1288,6 +1364,7 @@ type UserAttributeValidation struct {
 | `GetBatchUserAttributes` | 批量获取多用户属性 |
 
 **验证逻辑:**
+
 - 字符串长度验证
 - 数字范围验证
 - 正则表达式验证
@@ -1310,6 +1387,7 @@ type ErrorPassthroughService struct {
 ```
 
 **接口:**
+
 ```go
 type ErrorPassthroughCache interface {
     GetRules, SetRules
@@ -1319,6 +1397,7 @@ type ErrorPassthroughCache interface {
 ```
 
 **核心方法:**
+
 - `MatchRule(statusCode, errorType, message)` — 匹配规则
 - CRUD 操作 (变更后发布失效通知)
 
@@ -1344,6 +1423,7 @@ type IdentityService struct {
 ```
 
 **核心结构体:**
+
 ```go
 type Fingerprint struct {
     Cookie       string
@@ -1354,6 +1434,7 @@ type Fingerprint struct {
 ```
 
 **核心方法:**
+
 - `RewriteUserID` — 重写 User ID
 - `RewriteUserIDWithMasking` — 带会话 ID 掩码的重写
 - 指纹缓存管理
@@ -1397,6 +1478,7 @@ type TurnstileVerifier interface {
 ```
 
 **核心方法:**
+
 - `VerifyToken` — 验证 Turnstile Token
 - `IsEnabled` — 检查是否启用
 - `ValidateSecretKey` — 验证 Secret Key 有效性
@@ -1410,6 +1492,7 @@ type TurnstileVerifier interface {
 TOTP (Time-based One-Time Password) 双因素认证服务。
 
 **用户相关字段 (在 `user.go`):**
+
 - `TotpSecretEncrypted` — AES-256-GCM 加密的 TOTP 密钥
 - `TotpEnabled` — 是否启用
 - `TotpEnabledAt` — 启用时间
@@ -1429,6 +1512,7 @@ type TimingWheelService struct {
 ```
 
 **方法:**
+
 | 方法 | 说明 |
 |------|------|
 | `Schedule(name, delay, fn)` | 单次延迟任务 |
@@ -1436,6 +1520,7 @@ type TimingWheelService struct {
 | `Cancel(name)` | 取消任务 |
 
 **使用者:**
+
 - `DeferredService` — 延迟批量更新
 - `UsageCleanupService` — 使用记录清理
 - `DashboardAggregationService` — 仪表盘聚合
@@ -1452,6 +1537,7 @@ type DeferredService struct {
 ```
 
 **流程:**
+
 1. `ScheduleLastUsedUpdate(accountID)` — 写入内存 Map
 2. 定时 (10s) flush — 批量写入数据库
 3. 失败时回写内存 Map (重试)
@@ -1465,11 +1551,13 @@ type DeferredService struct {
 **核心职责:** 保证重复请求的幂等性，避免重复执行（如订阅分配、备份创建等）。
 
 **关键结构体:**
+
 - `IdempotencyRecord` — 幂等记录 (scope, idempotency_key_hash, status, expires_at)
 - `IdempotencyCoordinator` — 协调器，提供 `ExecuteIdempotent` 等接口
 - `IdempotencyRepository` — 数据访问接口
 
 **状态流转:**
+
 - `processing` → `succeeded` / `failed_retryable`
 - 支持锁续期、过期清理
 
@@ -1527,6 +1615,7 @@ type DeferredService struct {
 包含所有服务的构造函数和 Provider 函数，通过 Wire 自动解析依赖关系。
 
 **关键绑定:**
+
 ```go
 wire.Bind(new(TokenCacheInvalidator), new(*CompositeTokenCacheInvalidator))
 ```

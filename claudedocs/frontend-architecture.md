@@ -209,11 +209,12 @@ frontend/src/
    - `/redeem` - 兑换码
    - `/profile` - 个人资料
    - `/purchase` - 购买订阅
+
 - `/sora` - Sora 视频生成
 - `/custom/:id` - 自定义页面
 - `/key-usage` - Key 用量（公开）
 
-3. **管理员路由** (需要管理员权限):
+1. **管理员路由** (需要管理员权限):
    - `/admin/dashboard` - 管理仪表盘
    - `/admin/users` - 用户管理
    - `/admin/groups` - 分组管理
@@ -226,9 +227,10 @@ frontend/src/
    - `/admin/subscriptions` - 订阅管理
    - `/admin/accounts` - 账号管理
    - `/admin/ops` - 运维操作
+
 - `/admin/data-management` - 数据管理
 
-4. **特殊路由**:
+1. **特殊路由**:
    - `/setup` - 初始化向导
    - `/sora` - Sora 视频生成 (需认证)
 
