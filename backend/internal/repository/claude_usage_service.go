@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/httpclient"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 )
@@ -83,7 +84,7 @@ func (s *claudeUsageService) FetchUsageWithOptions(ctx context.Context, opts *se
 			AllowPrivateHosts:  s.allowPrivateHosts,
 		})
 		if err != nil {
-			client = &http.Client{Timeout: 30 * time.Second}
+			return nil, fmt.Errorf("create http client failed: %w", err)
 		}
 
 		resp, err = client.Do(req)
@@ -95,7 +96,8 @@ func (s *claudeUsageService) FetchUsageWithOptions(ctx context.Context, opts *se
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
+		msg := fmt.Sprintf("API returned status %d: %s", resp.StatusCode, string(body))
+		return nil, infraerrors.New(http.StatusInternalServerError, "UPSTREAM_ERROR", msg)
 	}
 
 	var usageResp service.ClaudeUsageResponse

@@ -1,0 +1,33 @@
+import { describe, expect, it } from 'vitest'
+import { buildModelMappingObject, getModelsByPlatform } from '../useModelWhitelist'
+
+describe('useModelWhitelist', () => {
+  it('openai 模型列表包含 GPT-5.4 官方快照', () => {
+    const models = getModelsByPlatform('openai')
+
+    expect(models).toContain('gpt-5.4')
+    expect(models).toContain('gpt-5.4-2026-03-05')
+  })
+
+  it('antigravity 模型列表包含图片模型兼容项', () => {
+    const models = getModelsByPlatform('antigravity')
+
+    expect(models).toContain('gemini-3.1-flash-image')
+    expect(models).toContain('gemini-3-pro-image')
+  })
+
+  it('whitelist 模式会忽略通配符条目', () => {
+    const mapping = buildModelMappingObject('whitelist', ['claude-*', 'gemini-3.1-flash-image'], [])
+    expect(mapping).toEqual({
+      'gemini-3.1-flash-image': 'gemini-3.1-flash-image'
+    })
+  })
+
+  it('whitelist 模式会保留 GPT-5.4 官方快照的精确映射', () => {
+    const mapping = buildModelMappingObject('whitelist', ['gpt-5.4-2026-03-05'], [])
+
+    expect(mapping).toEqual({
+      'gpt-5.4-2026-03-05': 'gpt-5.4-2026-03-05'
+    })
+  })
+})

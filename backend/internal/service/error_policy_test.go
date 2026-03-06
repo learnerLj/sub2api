@@ -89,6 +89,49 @@ func TestCheckErrorPolicy(t *testing.T) {
 			expected:   ErrorPolicyTempUnscheduled,
 		},
 		{
+			name: "temp_unschedulable_401_first_hit_returns_temp_unscheduled",
+			account: &Account{
+				ID:       14,
+				Type:     AccountTypeOAuth,
+				Platform: PlatformAntigravity,
+				Credentials: map[string]any{
+					"temp_unschedulable_enabled": true,
+					"temp_unschedulable_rules": []any{
+						map[string]any{
+							"error_code":       float64(401),
+							"keywords":         []any{"unauthorized"},
+							"duration_minutes": float64(10),
+						},
+					},
+				},
+			},
+			statusCode: 401,
+			body:       []byte(`unauthorized`),
+			expected:   ErrorPolicyTempUnscheduled,
+		},
+		{
+			name: "temp_unschedulable_401_second_hit_upgrades_to_none",
+			account: &Account{
+				ID:                      15,
+				Type:                    AccountTypeOAuth,
+				Platform:                PlatformAntigravity,
+				TempUnschedulableReason: `{"status_code":401,"until_unix":1735689600}`,
+				Credentials: map[string]any{
+					"temp_unschedulable_enabled": true,
+					"temp_unschedulable_rules": []any{
+						map[string]any{
+							"error_code":       float64(401),
+							"keywords":         []any{"unauthorized"},
+							"duration_minutes": float64(10),
+						},
+					},
+				},
+			},
+			statusCode: 401,
+			body:       []byte(`unauthorized`),
+			expected:   ErrorPolicyNone,
+		},
+		{
 			name: "temp_unschedulable_body_miss_returns_none",
 			account: &Account{
 				ID:       5,
@@ -158,6 +201,7 @@ func TestApplyErrorPolicy(t *testing.T) {
 		statusCode        int
 		body              []byte
 		expectedHandled   bool
+		expectedStatus    int  // expected outStatus
 		expectedSwitchErr bool // expect *AntigravityAccountSwitchError
 		handleErrorCalls  int
 	}{
@@ -171,6 +215,7 @@ func TestApplyErrorPolicy(t *testing.T) {
 			statusCode:       500,
 			body:             []byte(`"error"`),
 			expectedHandled:  false,
+			expectedStatus:   500, // passthrough
 			handleErrorCalls: 0,
 		},
 		{
@@ -187,6 +232,7 @@ func TestApplyErrorPolicy(t *testing.T) {
 			statusCode:       500, // not in custom codes
 			body:             []byte(`"error"`),
 			expectedHandled:  true,
+			expectedStatus:   http.StatusInternalServerError, // skipped → 500
 			handleErrorCalls: 0,
 		},
 		{
@@ -203,6 +249,7 @@ func TestApplyErrorPolicy(t *testing.T) {
 			statusCode:       500,
 			body:             []byte(`"error"`),
 			expectedHandled:  true,
+			expectedStatus:   500, // matched → original status
 			handleErrorCalls: 1,
 		},
 		{
@@ -225,6 +272,7 @@ func TestApplyErrorPolicy(t *testing.T) {
 			statusCode:        503,
 			body:              []byte(`overloaded`),
 			expectedHandled:   true,
+			expectedStatus:    503, // temp_unscheduled → original status
 			expectedSwitchErr: true,
 			handleErrorCalls:  0,
 		},
@@ -250,9 +298,10 @@ func TestApplyErrorPolicy(t *testing.T) {
 				isStickySession: true,
 			}
 
-			handled, retErr := svc.applyErrorPolicy(p, tt.statusCode, http.Header{}, tt.body)
+			handled, outStatus, retErr := svc.applyErrorPolicy(p, tt.statusCode, http.Header{}, tt.body)
 
 			require.Equal(t, tt.expectedHandled, handled, "handled mismatch")
+			require.Equal(t, tt.expectedStatus, outStatus, "outStatus mismatch")
 			require.Equal(t, tt.handleErrorCalls, handleErrorCount, "handleError call count mismatch")
 
 			if tt.expectedSwitchErr {
