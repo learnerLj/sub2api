@@ -146,6 +146,7 @@ interface Props {
   apiKey: string
   baseUrl: string
   platform: GroupPlatform | null
+  allowMessagesDispatch?: boolean
 }
 
 interface Emits {
@@ -265,12 +266,17 @@ const SparkleIcon = {
 const clientTabs = computed((): TabConfig[] => {
   if (!props.platform) return []
   switch (props.platform) {
-    case 'openai':
-      return [
+    case 'openai': {
+      const tabs: TabConfig[] = [
         { id: 'codex', label: t('keys.useKeyModal.cliTabs.codexCli'), icon: TerminalIcon },
         { id: 'codex-ws', label: t('keys.useKeyModal.cliTabs.codexCliWs'), icon: TerminalIcon },
-        { id: 'opencode', label: t('keys.useKeyModal.cliTabs.opencode'), icon: TerminalIcon }
       ]
+      if (props.allowMessagesDispatch) {
+        tabs.push({ id: 'claude', label: t('keys.useKeyModal.cliTabs.claudeCode'), icon: TerminalIcon })
+      }
+      tabs.push({ id: 'opencode', label: t('keys.useKeyModal.cliTabs.opencode'), icon: TerminalIcon })
+      return tabs
+    }
     case 'gemini':
       return [
         { id: 'gemini', label: t('keys.useKeyModal.cliTabs.geminiCli'), icon: SparkleIcon },
@@ -316,6 +322,9 @@ const currentTabs = computed(() => {
 const platformDescription = computed(() => {
   switch (props.platform) {
     case 'openai':
+      if (activeClientTab.value === 'claude') {
+        return t('keys.useKeyModal.description')
+      }
       return t('keys.useKeyModal.openai.description')
     case 'gemini':
       return t('keys.useKeyModal.gemini.description')
@@ -329,6 +338,9 @@ const platformDescription = computed(() => {
 const platformNote = computed(() => {
   switch (props.platform) {
     case 'openai':
+      if (activeClientTab.value === 'claude') {
+        return t('keys.useKeyModal.note')
+      }
       return activeTab.value === 'windows'
         ? t('keys.useKeyModal.openai.noteWindows')
         : t('keys.useKeyModal.openai.note')
@@ -402,6 +414,9 @@ const currentFiles = computed((): FileConfig[] => {
 
   switch (props.platform) {
     case 'openai':
+      if (activeClientTab.value === 'claude') {
+        return generateAnthropicFiles(baseUrl, apiKey)
+      }
       if (activeClientTab.value === 'codex-ws') {
         return generateOpenAIWsFiles(baseUrl, apiKey)
       }
@@ -426,17 +441,20 @@ function generateAnthropicFiles(baseUrl: string, apiKey: string): FileConfig[] {
     case 'unix':
       path = 'Terminal'
       content = `export ANTHROPIC_BASE_URL="${baseUrl}"
-export ANTHROPIC_AUTH_TOKEN="${apiKey}"`
+export ANTHROPIC_AUTH_TOKEN="${apiKey}"
+export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`
       break
     case 'cmd':
       path = 'Command Prompt'
       content = `set ANTHROPIC_BASE_URL=${baseUrl}
-set ANTHROPIC_AUTH_TOKEN=${apiKey}`
+set ANTHROPIC_AUTH_TOKEN=${apiKey}
+set CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`
       break
     case 'powershell':
       path = 'PowerShell'
       content = `$env:ANTHROPIC_BASE_URL="${baseUrl}"
-$env:ANTHROPIC_AUTH_TOKEN="${apiKey}"`
+$env:ANTHROPIC_AUTH_TOKEN="${apiKey}"
+$env:CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`
       break
     default:
       path = 'Terminal'
@@ -451,6 +469,7 @@ $env:ANTHROPIC_AUTH_TOKEN="${apiKey}"`
   "env": {
     "ANTHROPIC_BASE_URL": "${baseUrl}",
     "ANTHROPIC_AUTH_TOKEN": "${apiKey}",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
     "CLAUDE_CODE_ATTRIBUTION_HEADER": "0"
   }
 }`
@@ -936,6 +955,23 @@ function generateOpenCodeConfig(platform: string, baseUrl: string, apiKey: strin
       modalities: {
         input: ['text', 'image', 'pdf'],
         output: ['text']
+      },
+      options: {
+        thinking: {
+          budgetTokens: 24576,
+          type: 'enabled'
+        }
+      }
+    },
+    'gemini-2.5-flash-image': {
+      name: 'Gemini 2.5 Flash Image',
+      limit: {
+        context: 1048576,
+        output: 65536
+      },
+      modalities: {
+        input: ['text', 'image'],
+        output: ['image']
       },
       options: {
         thinking: {

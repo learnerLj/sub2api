@@ -57,6 +57,9 @@ type APIKey struct {
 	Window5hStart *time.Time `json:"window_5h_start"`
 	Window1dStart *time.Time `json:"window_1d_start"`
 	Window7dStart *time.Time `json:"window_7d_start"`
+	Reset5hAt     *time.Time `json:"reset_5h_at,omitempty"`
+	Reset1dAt     *time.Time `json:"reset_1d_at,omitempty"`
+	Reset7dAt     *time.Time `json:"reset_7d_at,omitempty"`
 
 	User  *User  `json:"user,omitempty"`
 	Group *Group `json:"group,omitempty"`
@@ -96,6 +99,9 @@ type Group struct {
 	// Sora 存储配额
 	SoraStorageQuotaBytes int64 `json:"sora_storage_quota_bytes"`
 
+	// OpenAI Messages 调度开关（用户侧需要此字段判断是否展示 Claude Code 教程）
+	AllowMessagesDispatch bool `json:"allow_messages_dispatch"`
+
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -112,10 +118,15 @@ type AdminGroup struct {
 	// MCP XML 协议注入（仅 antigravity 平台使用）
 	MCPXMLInject bool `json:"mcp_xml_inject"`
 
+	// OpenAI Messages 调度配置（仅 openai 平台使用）
+	DefaultMappedModel string `json:"default_mapped_model"`
+
 	// 支持的模型系列（仅 antigravity 平台使用）
-	SupportedModelScopes []string       `json:"supported_model_scopes"`
-	AccountGroups        []AccountGroup `json:"account_groups,omitempty"`
-	AccountCount         int64          `json:"account_count,omitempty"`
+	SupportedModelScopes    []string       `json:"supported_model_scopes"`
+	AccountGroups           []AccountGroup `json:"account_groups,omitempty"`
+	AccountCount            int64          `json:"account_count,omitempty"`
+	ActiveAccountCount      int64          `json:"active_account_count,omitempty"`
+	RateLimitedAccountCount int64          `json:"rate_limited_account_count,omitempty"`
 
 	// 分组排序
 	SortOrder int `json:"sort_order"`
@@ -187,8 +198,22 @@ type Account struct {
 	CacheTTLOverrideTarget  *string `json:"cache_ttl_override_target,omitempty"`
 
 	// API Key 账号配额限制
-	QuotaLimit *float64 `json:"quota_limit,omitempty"`
-	QuotaUsed  *float64 `json:"quota_used,omitempty"`
+	QuotaLimit       *float64 `json:"quota_limit,omitempty"`
+	QuotaUsed        *float64 `json:"quota_used,omitempty"`
+	QuotaDailyLimit  *float64 `json:"quota_daily_limit,omitempty"`
+	QuotaDailyUsed   *float64 `json:"quota_daily_used,omitempty"`
+	QuotaWeeklyLimit *float64 `json:"quota_weekly_limit,omitempty"`
+	QuotaWeeklyUsed  *float64 `json:"quota_weekly_used,omitempty"`
+
+	// 配额固定时间重置配置
+	QuotaDailyResetMode  *string `json:"quota_daily_reset_mode,omitempty"`
+	QuotaDailyResetHour  *int    `json:"quota_daily_reset_hour,omitempty"`
+	QuotaWeeklyResetMode *string `json:"quota_weekly_reset_mode,omitempty"`
+	QuotaWeeklyResetDay  *int    `json:"quota_weekly_reset_day,omitempty"`
+	QuotaWeeklyResetHour *int    `json:"quota_weekly_reset_hour,omitempty"`
+	QuotaResetTimezone   *string `json:"quota_reset_timezone,omitempty"`
+	QuotaDailyResetAt    *string `json:"quota_daily_reset_at,omitempty"`
+	QuotaWeeklyResetAt   *string `json:"quota_weekly_reset_at,omitempty"`
 
 	Proxy         *Proxy         `json:"proxy,omitempty"`
 	AccountGroups []AccountGroup `json:"account_groups,omitempty"`
@@ -309,9 +334,18 @@ type UsageLog struct {
 	AccountID int64  `json:"account_id"`
 	RequestID string `json:"request_id"`
 	Model     string `json:"model"`
-	// ReasoningEffort is the request's reasoning effort level (OpenAI Responses API).
-	// nil means not provided / not applicable.
+	// UpstreamModel is the actual model sent to the upstream provider after mapping.
+	// Omitted when no mapping was applied (requested model was used as-is).
+	UpstreamModel *string `json:"upstream_model,omitempty"`
+	// ServiceTier records the OpenAI service tier used for billing, e.g. "priority" / "flex".
+	ServiceTier *string `json:"service_tier,omitempty"`
+	// ReasoningEffort is the request's reasoning effort level.
+	// OpenAI: "low"/"medium"/"high"/"xhigh"; Claude: "low"/"medium"/"high"/"max".
 	ReasoningEffort *string `json:"reasoning_effort,omitempty"`
+	// InboundEndpoint is the client-facing API endpoint path, e.g. /v1/chat/completions.
+	InboundEndpoint *string `json:"inbound_endpoint,omitempty"`
+	// UpstreamEndpoint is the normalized upstream endpoint path, e.g. /v1/responses.
+	UpstreamEndpoint *string `json:"upstream_endpoint,omitempty"`
 
 	GroupID        *int64 `json:"group_id"`
 	SubscriptionID *int64 `json:"subscription_id"`
